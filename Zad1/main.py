@@ -83,7 +83,6 @@ def main():
                 break
             else:
                 automaton.update(letter)
-        print(automaton)
     print(automaton)
 
 
