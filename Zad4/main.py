@@ -2,7 +2,7 @@ import json
 
 from z3 import *
 
-DEBUG = True
+DEBUG = False
 
 
 class Diet:
@@ -41,10 +41,17 @@ class Diet:
             for nutrient in self._diet["cel"]:
                 nutrient_values = []
                 for ingredient in self._diet["składniki"]:
-                    nutrient_values.append(
-                        ToReal(Sum([self._variables[f'{ingredient["nazwa"]}_{day}_{meal}'] for meal in range(5)]))
-                        * ingredient[nutrient]
-                    )
+                    if isinstance(ingredient[nutrient], float):
+                        # ToReal slows Z3 considerably. Let's use it only when it is required.
+                        nutrient_values.append(
+                            ToReal(Sum([self._variables[f'{ingredient["nazwa"]}_{day}_{meal}'] for meal in range(5)]))
+                            * ingredient[nutrient]
+                        )
+                    else:
+                        nutrient_values.append(
+                            Sum([self._variables[f'{ingredient["nazwa"]}_{day}_{meal}'] for meal in range(5)])
+                            * ingredient[nutrient]
+                        )
                 self._solver.add(Sum(nutrient_values) >= self._diet["cel"][nutrient]["min"])
                 self._solver.add(Sum(nutrient_values) <= self._diet["cel"][nutrient]["max"])
 
@@ -52,10 +59,17 @@ class Diet:
         for nutrient in self._diet["cel_tygodniowy"]:
             nutrient_values = []
             for ingredient in self._diet["składniki"]:
-                nutrient_values.append(
-                    ToReal(Sum([self._variables[f'{ingredient["nazwa"]}_{day}_{meal}'] for meal in range(5) for day in
-                                range(7)]))
-                    * ingredient[nutrient])
+                if isinstance(ingredient[nutrient], float):
+                    nutrient_values.append(
+                        ToReal(
+                            Sum([self._variables[f'{ingredient["nazwa"]}_{day}_{meal}'] for meal in range(5) for day in
+                                 range(7)]))
+                        * ingredient[nutrient])
+                else:
+                    nutrient_values.append(
+                        Sum([self._variables[f'{ingredient["nazwa"]}_{day}_{meal}'] for meal in range(5) for day in
+                             range(7)])
+                        * ingredient[nutrient])
             self._solver.add(Sum(nutrient_values) >= self._diet["cel_tygodniowy"][nutrient]["min"])
             self._solver.add(Sum(nutrient_values) <= self._diet["cel_tygodniowy"][nutrient]["max"])
 
@@ -66,7 +80,6 @@ class Diet:
         self._add_daily_goals()
         self._add_weekly_goals()
         self._solvable = self._solver.check() == sat
-        print(self._solvable)
 
     def format_output(self):
         assert self._solvable is not None
