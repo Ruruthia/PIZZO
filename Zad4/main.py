@@ -12,25 +12,28 @@ class Diet:
         self._diet = diet
         self._solver = Solver()
         self._solvable = None
+        self._variables = {
+            f'{ingredient["nazwa"]}_{day}_{meal}': Int(f'{ingredient["nazwa"]}_{day}_{meal}')
+            for ingredient in self._diet["składniki"] for day in range(7) for meal in range(5)
+        }
 
     def _ingredients_not_negative(self):
-        for day in range(7):
-            for meal in range(5):
-                for ingredient in self._diet["składniki"]:
-                    self._solver.add(Int(f'{ingredient["nazwa"]}_{day}_{meal}') >= 0)
+        for _, ingredient in self._variables.items():
+            self._solver.add(ingredient >= 0)
 
     def _add_meal_not_empty(self):
         for day in range(7):
             for meal in range(5):
                 self._solver.add(
-                    Sum([Int(f'{ingredient["nazwa"]}_{day}_{meal}') for ingredient in self._diet["składniki"]]) > 0)
+                    Sum([self._variables[f'{ingredient["nazwa"]}_{day}_{meal}'] for ingredient in
+                         self._diet["składniki"]]) > 0)
 
     def _add_conflicts(self):
         for day in range(7):
             for meal in range(5):
                 for conflict in self._diet["konflikty"]:
-                    self._solver.add(Or(Int(f'{conflict["nazwa1"]}_{day}_{meal}') == 0,
-                                        Int(f'{conflict["nazwa2"]}_{day}_{meal}') == 0
+                    self._solver.add(Or(self._variables[f'{conflict["nazwa1"]}_{day}_{meal}'] == 0,
+                                        self._variables[f'{conflict["nazwa2"]}_{day}_{meal}'] == 0
                                         ))
 
     def _add_daily_goals(self):
@@ -39,7 +42,7 @@ class Diet:
                 nutrient_values = []
                 for ingredient in self._diet["składniki"]:
                     nutrient_values.append(
-                        ToReal(Sum([Int(f'{ingredient["nazwa"]}_{day}_{meal}') for meal in range(5)]))
+                        ToReal(Sum([self._variables[f'{ingredient["nazwa"]}_{day}_{meal}'] for meal in range(5)]))
                         * ingredient[nutrient]
                     )
                 self._solver.add(Sum(nutrient_values) >= self._diet["cel"][nutrient]["min"])
@@ -50,7 +53,8 @@ class Diet:
             nutrient_values = []
             for ingredient in self._diet["składniki"]:
                 nutrient_values.append(
-                    ToReal(Sum([Int(f'{ingredient["nazwa"]}_{day}_{meal}') for meal in range(5) for day in range(7)]))
+                    ToReal(Sum([self._variables[f'{ingredient["nazwa"]}_{day}_{meal}'] for meal in range(5) for day in
+                                range(7)]))
                     * ingredient[nutrient])
             self._solver.add(Sum(nutrient_values) >= self._diet["cel_tygodniowy"][nutrient]["min"])
             self._solver.add(Sum(nutrient_values) <= self._diet["cel_tygodniowy"][nutrient]["max"])
