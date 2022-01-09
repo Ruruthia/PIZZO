@@ -1,8 +1,6 @@
 import json
 import sys
 
-# testing: echo path_to_test_file | python main.py | clasp -n 0
-
 
 def parse_install_instance(install_instance):
     # parsed instance has packet names converted into indexes
@@ -53,9 +51,10 @@ class Install:
 
 
 def main():
-    path = sys.stdin.readline().strip()
-    with open(path, "r") as f:
-        install_instance = Install(json.load(f))
+    # to use: 1. python main.py
+    # 2. paste the input
+    # 3. ctrl+d to end input
+    install_instance = Install(json.load(sys.stdin))
     install_instance.to_sat()
 
 
